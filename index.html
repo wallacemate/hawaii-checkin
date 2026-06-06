@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>夏威夷實業社 員工打卡</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Arial", "微軟正黑體", sans-serif;
+  background: #1a2744;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.card {
+  background: white;
+  border-radius: 16px;
+  padding: 30px 24px;
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+}
+
+.logo {
+  font-size: 22px;
+  font-weight: 700;
+  color: #1a2744;
+  margin-bottom: 4px;
+}
+
+.logo-sub {
+  font-size: 12px;
+  color: #C9A84C;
+  margin-bottom: 24px;
+}
+
+.status-box {
+  background: #F0F4F8;
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.status-icon {
+  font-size: 36px;
+  margin-bottom: 8px;
+}
+
+.status-text {
+  font-size: 14px;
+  color: #555;
+  line-height: 1.6;
+}
+
+.status-text.success { color: #27AE60; font-weight: 500; }
+.status-text.error { color: #cc0000; }
+
+.gps-info {
+  font-size: 12px;
+  color: #888;
+  margin-top: 8px;
+  word-break: break-all;
+}
+
+.btn {
+  width: 100%;
+  padding: 14px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: opacity 0.2s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-checkin {
+  background: #1a2744;
+  color: white;
+}
+
+.btn-gps {
+  background: #27AE60;
+  color: white;
+}
+
+.btn-manual {
+  background: #f0f0f0;
+  color: #555;
+  font-size: 13px;
+  padding: 10px;
+}
+
+.time-display {
+  font-size: 32px;
+  font-weight: 700;
+  color: #1a2744;
+  margin-bottom: 4px;
+}
+
+.date-display {
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 20px;
+}
+
+.divider {
+  height: 1px;
+  background: #eee;
+  margin: 16px 0;
+}
+
+.footer {
+  font-size: 11px;
+  color: #aaa;
+  margin-top: 16px;
+}
+</style>
+</head>
+<body>
+
+<div class="card">
+  <div class="logo">🐀 夏威夷除蟲達人</div>
+  <div class="logo-sub">夏威夷實業社 員工打卡系統</div>
+
+  <div class="time-display" id="clock">--:--</div>
+  <div class="date-display" id="date">載入中...</div>
+
+  <div class="status-box">
+    <div class="status-icon" id="statusIcon">📍</div>
+    <div class="status-text" id="statusText">正在取得您的位置...</div>
+    <div class="gps-info" id="gpsInfo"></div>
+  </div>
+
+  <button class="btn btn-gps" id="btnGetGPS" onclick="getGPS()">
+    🔄 重新取得位置
+  </button>
+
+  <button class="btn btn-checkin" id="btnCheckin" onclick="goToForm()" disabled>
+    ✅ 前往打卡表單
+  </button>
+
+  <button class="btn btn-manual" onclick="goToFormManual()">
+    手動填入位置
+  </button>
+
+  <div class="footer">
+    打卡後請確認 GPS 座標已自動填入表單<br>
+    如有問題請聯繫管理員
+  </div>
+</div>
+
+<script>
+// ===== 請修改這裡 =====
+// 把你的 Google 表單連結貼在這裡
+// 格式：https://docs.google.com/forms/d/e/XXXXXXXX/viewform
+var FORM_URL = 'https://docs.google.com/forms/d/e/1FAIpQLSfJIWGEQ6pedGr5jXxO3bmP6AxR2wYXDY2WQiI2bA4GAr-NTQ/viewform';
+
+// 打卡位置(GPS) 欄位的 entry ID
+// 需要從表單網址取得，下面有說明如何取得
+var GPS_ENTRY = 'entry.1190748829';
+// ======================
+
+var gpsCoords = '';
+
+// 時鐘
+function updateClock() {
+  var now = new Date();
+  var h = String(now.getHours()).padStart(2, '0');
+  var m = String(now.getMinutes()).padStart(2, '0');
+  var s = String(now.getSeconds()).padStart(2, '0');
+  document.getElementById('clock').textContent = h + ':' + m + ':' + s;
+
+  var days = ['日','一','二','三','四','五','六'];
+  var dateStr = now.getFullYear() + '年' +
+                String(now.getMonth()+1).padStart(2,'0') + '月' +
+                String(now.getDate()).padStart(2,'0') + '日' +
+                '（週' + days[now.getDay()] + '）';
+  document.getElementById('date').textContent = dateStr;
+}
+
+setInterval(updateClock, 1000);
+updateClock();
+
+// GPS 取得
+function getGPS() {
+  document.getElementById('statusIcon').textContent = '⏳';
+  document.getElementById('statusText').textContent = '正在取得位置，請允許存取定位...';
+  document.getElementById('gpsInfo').textContent = '';
+  document.getElementById('btnCheckin').disabled = true;
+
+  if (!navigator.geolocation) {
+    document.getElementById('statusIcon').textContent = '❌';
+    document.getElementById('statusText').className = 'status-text error';
+    document.getElementById('statusText').textContent = '您的裝置不支援定位功能';
+    return;
+  }
+
+  navigator.geolocation.getCurrentPosition(
+    function(position) {
+      var lat = position.coords.latitude.toFixed(6);
+      var lng = position.coords.longitude.toFixed(6);
+      var acc = Math.round(position.coords.accuracy);
+      gpsCoords = lat + ',' + lng;
+
+      document.getElementById('statusIcon').textContent = '✅';
+      document.getElementById('statusText').className = 'status-text success';
+      document.getElementById('statusText').textContent = '位置取得成功！可以前往打卡';
+      document.getElementById('gpsInfo').textContent =
+        '座標：' + gpsCoords + '\n精確度：約 ' + acc + ' 公尺';
+      document.getElementById('btnCheckin').disabled = false;
+    },
+    function(error) {
+      var msg = '位置取得失敗';
+      if (error.code === 1) { msg = '請允許瀏覽器存取定位權限'; }
+      if (error.code === 2) { msg = '無法取得位置，請確認 GPS 已開啟'; }
+      if (error.code === 3) { msg = '取得位置逾時，請重試'; }
+
+      document.getElementById('statusIcon').textContent = '⚠️';
+      document.getElementById('statusText').className = 'status-text error';
+      document.getElementById('statusText').textContent = msg;
+    },
+    {
+      enableHighAccuracy: true,
+      timeout: 15000,
+      maximumAge: 0
+    }
+  );
+}
+
+// 前往表單（帶入 GPS）
+function goToForm() {
+  if (!gpsCoords) {
+    alert('請先取得 GPS 位置');
+    return;
+  }
+  var url = FORM_URL + '?usp=pp_url&' + GPS_ENTRY + '=' + encodeURIComponent(gpsCoords);
+  window.location.href = url;
+}
+
+// 手動前往表單
+function goToFormManual() {
+  window.location.href = FORM_URL;
+}
+
+// 頁面載入時自動取得 GPS
+window.onload = function() {
+  getGPS();
+};
+</script>
+</body>
+</html>
